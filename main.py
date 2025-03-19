@@ -11,12 +11,8 @@ from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.losses import binary_crossentropy
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 import seaborn as sns
-import TrainSet_Preprocessing_CNN_LSTM
-import TestSet_Preprocessing_CNN_LSTM
-import TestSet_Preprocessing_CNN
-import TrainSet_Preprocessing_CNN
-import TestSet_Preprocessing_LSTM
-import TrainSet_Preprocessing_LSTM
+import TrainSet_Preprocessing
+import TestSet_Preprocessing
 # 设置字体为SimHei，以支持中文显示
 plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
 plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
@@ -37,10 +33,7 @@ def model_train(x_train, y_train, x_valid, y_valid, x_test, y_test, batch_size, 
     :param model_type: 模型类型 ('cnn_lstm', 'cnn', 'lstm')
     :return: 训练历史、模型、混淆矩阵
     """
-    if model_type == 'cnn':
-        input_shape = ((x_train.shape[1], x_train.shape[2], 1))
-    else:
-        input_shape = (x_train.shape[1], x_train.shape[2])  # (window_size, n_features)
+    input_shape = (x_train.shape[1], x_train.shape[2])  # (window_size, n_features)
 
     # 定义模型
     if model_type == 'cnn_lstm':
@@ -55,21 +48,21 @@ def model_train(x_train, y_train, x_valid, y_valid, x_test, y_test, batch_size, 
         ])
     elif model_type == 'cnn':
         model = Sequential([
-            Conv2D(32, (3, 3), activation='relu', input_shape=input_shape),
-            MaxPooling2D((2, 2)),
-            Flatten(),
-            Dense(64, activation='relu'),
+            Conv1D(filters=64, kernel_size=3, activation='relu', input_shape=input_shape, kernel_regularizer=l2(0.001)),
+            MaxPooling1D(pool_size=2),
+            Flatten(),  # 将卷积输出展平
+            Dropout(0.5),
+            Dense(100, activation='relu', kernel_regularizer=l2(0.01)),
+            Dropout(0.5),
             Dense(1, activation='sigmoid')
         ])
     elif model_type == 'lstm':
         model = Sequential([
-            LSTM(units=64, return_sequences=True, input_shape=input_shape),
-            Dropout(0.2),
-            LSTM(units=32, return_sequences=False),
-            Dropout(0.2),
-            Dense(units=16, activation='relu'),
-            Dropout(0.2),
-            Dense(units=1, activation='sigmoid')
+            LSTM(units=100, return_sequences=False, input_shape=input_shape),
+            Dropout(0.5),
+            Dense(100, activation='relu', kernel_regularizer=l2(0.01)),
+            Dropout(0.5),
+            Dense(1, activation='sigmoid')
         ])
     else:
         raise ValueError("Invalid model_type. Choose from 'cnn_lstm', 'cnn', or 'lstm'.")
@@ -182,20 +175,22 @@ if __name__ == '__main__':
     window_size = 10
     batch_size = 64  # 训练批次
     epochs = 1000  # 训练轮次
-    model_type = 'cnn '  # 选择模型类型 ('cnn_lstm', 'cnn', 'lstm')
+    model_type = 'cnn_lstm  '  # 选择模型类型 ('cnn_lstm', 'cnn', 'lstm')
 
     # 1. 数据预处理
-    if model_type == 'cnn_lstm':
-        X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing_CNN_LSTM.preprocess_data(trainSet_file_path, split_rate, window_size)
-        X_test_seq, y_test_seq = TestSet_Preprocessing_CNN_LSTM.preprocess_data(testSet_file_path, selected_features, window_size)
-    elif model_type == 'cnn':
-        X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing_CNN.preprocess_data(trainSet_file_path, split_rate)
-        X_test_seq, y_test_seq = TestSet_Preprocessing_CNN.preprocess_data(testSet_file_path, selected_features)
-    elif model_type == 'lstm':
-        X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing_LSTM.preprocess_data(trainSet_file_path, split_rate, window_size)
-        X_test_seq, y_test_seq = TestSet_Preprocessing_LSTM.preprocess_data(testSet_file_path, window_size, selected_features)
-    else:
-        raise ValueError("Invalid model_type. Choose from 'cnn_lstm', 'cnn', or 'lstm'.")
+    # if model_type == 'cnn_lstm':
+    #     X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing_CNN_LSTM.preprocess_data(trainSet_file_path, split_rate, window_size)
+    #     X_test_seq, y_test_seq = TestSet_Preprocessing_CNN_LSTM.preprocess_data(testSet_file_path, selected_features, window_size)
+    # elif model_type == 'cnn':
+    #     X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing_CNN.preprocess_data(trainSet_file_path, split_rate)
+    #     X_test_seq, y_test_seq = TestSet_Preprocessing_CNN.preprocess_data(testSet_file_path, selected_features)
+    # elif model_type == 'lstm':
+    #     X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing_LSTM.preprocess_data(trainSet_file_path, split_rate, window_size)
+    #     X_test_seq, y_test_seq = TestSet_Preprocessing_LSTM.preprocess_data(testSet_file_path, window_size, selected_features)
+    # else:
+    #     raise ValueError("Invalid model_type. Choose from 'cnn_lstm', 'cnn', or 'lstm'.")
+    X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing.preprocess_data(trainSet_file_path, split_rate, window_size)
+    X_test_seq, y_test_seq = TestSet_Preprocessing.preprocess_data(testSet_file_path, selected_features, window_size)
 
     # 2. 模型训练
     history, model, conf_matrix = model_train(X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, X_test_seq, y_test_seq, batch_size, epochs, model_type)
