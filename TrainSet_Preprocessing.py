@@ -11,6 +11,7 @@ from mlxtend.frequent_patterns import fpgrowth
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import apriori, association_rules
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 
 # 1. 数据加载与预处理
@@ -91,16 +92,13 @@ def optimized_feature_engineering(data):
 
     # 获取特征重要性
     importances = model.feature_importances_
-    important_features = np.argsort(importances)[-20:]  # 选择前 20 个重要特征
-
+    sorted_idx = np.argsort(importances)[::-1]
+    cumulative_importance = np.cumsum(importances[sorted_idx])
+    n_features = np.argmax(cumulative_importance >= 0.95) + 1
     # 获取特征名称
-    selected_feature_names = X.columns[important_features].tolist()
+    selected_features_names = X.columns[sorted_idx[:n_features]].tolist()
 
-    # 保存选择的特征名称
-    with open("selected_features.txt", "w") as f:
-        f.write("\n".join(selected_feature_names))
-
-    return selected_feature_names
+    return selected_features_names
 
 # 3. 数据预处理主函数
 def preprocess_data(train_path, split_rate, timesteps):
