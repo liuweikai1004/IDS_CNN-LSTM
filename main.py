@@ -9,7 +9,7 @@ from tensorflow.keras.regularizers import l2
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.losses import binary_crossentropy
-from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
+from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score, roc_curve, auc, roc_auc_score
 import seaborn as sns
 import TrainSet_Preprocessing
 import TestSet_Preprocessing
@@ -128,9 +128,13 @@ def model_train(x_train, y_train, x_valid, y_valid, x_test, y_test, batch_size, 
     precision = precision_score(y_test, y_pred_labels)
     recall = recall_score(y_test, y_pred_labels)
 
+    # 计算AUC值
+    auc_score = roc_auc_score(y_test, y_pred)
+
     # 输出结果
     print("Confusion Matrix:")
     print(conf_matrix)
+    print(f"AUC Score: {auc_score:.4f}")
     print(f"Precision: {precision:.4f}")
     print(f"Recall: {recall:.4f}")
     print(f"F1 Score: {f1:.4f}")
@@ -142,7 +146,7 @@ def model_train(x_train, y_train, x_valid, y_valid, x_test, y_test, batch_size, 
         model.save(f'{model_type}_binary_model_LSTM.h5')
     else:
         model.save(f'{model_type}_binary_model_CNN_LSTM.h5')
-    return history, model, conf_matrix
+    return history, model, conf_matrix, auc_score, y_test, y_pred
 
 
 def acc_loss_line(history, conf_matrix):
@@ -184,6 +188,27 @@ def acc_loss_line(history, conf_matrix):
     plt.show()
 
 
+def plot_roc_curve(y_true, y_pred_prob, auc_score):
+    """
+    绘制ROC曲线
+    :param y_true: 真实标签
+    :param y_pred_prob: 预测概率
+    :param auc_score: AUC值
+    """
+    fpr, tpr, thresholds = roc_curve(y_true, y_pred_prob)
+
+    plt.figure()
+    plt.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC曲线 (AUC = {auc_score:.2f})')
+    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('假正率(FPR)')
+    plt.ylabel('真正率(TPR)')
+    plt.title('接收者操作特征曲线(ROC)')
+    plt.legend(loc="lower right")
+    plt.show()
+
+
 if __name__ == '__main__':
     # 设置全局随机种子
     set_seed(42)
@@ -194,7 +219,7 @@ if __name__ == '__main__':
     window_size = 10
     batch_size = 128  # 训练批次
     epochs = 1000  # 训练轮次
-    model_type = 'lstm'  # 选择模型类型 ('cnn_lstm', 'cnn', 'lstm')
+    model_type = 'cnn '  # 选择模型类型 ('cnn_lstm', 'cnn', 'lstm')
 
     # 1. 数据预处理
     X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, selected_features = TrainSet_Preprocessing.preprocess_data(
@@ -202,8 +227,11 @@ if __name__ == '__main__':
     X_test_seq, y_test_seq = TestSet_Preprocessing.preprocess_data(testSet_file_path, selected_features, window_size)
 
     # 2. 模型训练
-    history, model, conf_matrix = model_train(X_train_seq_res, y_train_seq_res, X_val_seq, y_val_seq, X_test_seq,
-                                              y_test_seq, batch_size, epochs, model_type)
-
+    history, model, conf_matrix, auc_score, y_test, y_pred = model_train(X_train_seq_res, y_train_seq_res, X_val_seq,
+                                                                         y_val_seq, X_test_seq, y_test_seq, batch_size,
+                                                                         epochs, model_type)
     # 3. 准确率与损失值曲线展示
     acc_loss_line(history, conf_matrix)
+
+    # 4.绘制ROC曲线
+    plot_roc_curve(y_test, y_pred, auc_score)
