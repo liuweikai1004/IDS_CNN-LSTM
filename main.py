@@ -141,11 +141,11 @@ def model_train(x_train, y_train, x_valid, y_valid, x_test, y_test, batch_size, 
 
     # 保存模型
     if model_type == 'cnn':
-        model.save(f'{model_type}_binary_model_CNN.h5')
+        model.save(f'{model_type}_binary_model.h5')
     elif model_type == 'lstm':
-        model.save(f'{model_type}_binary_model_LSTM.h5')
+        model.save(f'{model_type}_binary_model.h5')
     else:
-        model.save(f'{model_type}_binary_model_CNN_LSTM.h5')
+        model.save(f'{model_type}_binary_model.h5')
     return history, model, conf_matrix, auc_score, y_test, y_pred
 
 
